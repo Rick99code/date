@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Date Invitation</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { 
+            display: flex; align-items: center; justify-content: center; height: 100vh; 
+            background-color: #fce4ec; font-family: 'Arial', sans-serif; margin: 0; 
+            overflow: hidden; touch-action: none; 
+        }
+        .container { 
+            text-align: center; background: white; padding: 40px 30px; border-radius: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 400px; z-index: 10; 
+        }
+        .step { display: none; flex-direction: column; align-items: center; }
+        .step.active { display: flex; }
+        img { width: 150px; border-radius: 15px; margin-bottom: 20px; }
+        h1 { color: #5c0f35; font-size: 22px; margin-bottom: 20px; line-height: 1.4; }
+        .buttons { display: flex; justify-content: center; gap: 15px; position: relative; width: 100%; }
+        
+        button { 
+            font-size: 16px; padding: 12px 25px; border: none; border-radius: 25px; 
+            cursor: pointer; font-weight: bold; transition: 0.3s; 
+        }
+        .btn-primary { background-color: #f06292; color: white; box-shadow: 0 4px 10px rgba(240, 98, 146, 0.4); }
+        .btn-primary:active { transform: scale(0.95); }
+        #no-btn { background-color: #e1bee7; color: white; position: absolute; right: 0; }
+        
+        .food-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 15px; }
+        .food-btn { 
+            background-color: #f8bbd0; color: #5c0f35; padding: 15px; border-radius: 15px; 
+            font-size: 16px; border: 2px solid transparent; 
+        }
+        .food-btn.selected { border: 2px solid #e91e63; background-color: #f48fb1; }
+        
+        input[type="text"], input[type="datetime-local"] { 
+            width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #f48fb1; 
+            border-radius: 15px; font-size: 16px; box-sizing: border-box; text-align: center; 
+        }
+        input:focus { outline: none; border-color: #e91e63; }
+        
+        /* เพิ่มข้อความแจ้งเตือนให้แคปจอ */
+        .capture-hint {
+            font-size: 14px; color: #888; margin-top: 20px;
+            animation: blink 2s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="step-1" class="step active">
+            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDdtZ2JiZDR0a3BvNW1xcWxobmV6dXB6Z2J6Z2J6Z2J6Z2J6Z2J6ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/L1R1tvI9svkIWwpVYr/giphy.gif">
+            <h1>🌸 ไปเดทกันไหมที่สมุย? 🌸</h1>
+            <div class="buttons">
+                <button class="btn-primary" onclick="goToStep(1, 2)">YES ♥</button>
+                <button id="no-btn" onmouseover="moveButton(event)" ontouchstart="moveButton(event)">no 🐾</button>
+            </div>
+        </div>
+
+        <div id="step-2" class="step">
+            <img src="https://media.giphy.com/media/xT0xeMA62E1XIlup68/giphy.gif">
+            <h1>อยากกินอะไรดี? 😋</h1>
+            <div class="food-grid">
+                <button class="food-btn" onclick="selectFood('ชาบู 🍲', this)">ชาบู 🍲</button>
+                <button class="food-btn" onclick="selectFood('ปิ้งย่าง 🥩', this)">ปิ้งย่าง 🥩</button>
+                <button class="food-btn" onclick="selectFood('ซูชิ 🍣', this)">ซูชิ 🍣</button>
+                <button class="food-btn" onclick="selectFood('คาเฟ่ 🍰', this)">คาเฟ่ 🍰</button>
+            </div>
+            <input type="text" id="custom-food" placeholder="หรือพิมพ์ตรงนี้ ✍️" oninput="clearSelection()">
+            <button class="btn-primary" style="width: 100%;" onclick="validateFoodAndNext()">ถัดไป ➔</button>
+        </div>
+
+        <div id="step-3" class="step">
+            <img src="https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif">
+            <h1>ว่างวันไหน กี่โมง? 🗓️</h1>
+            <input type="datetime-local" id="date-time">
+            <button id="submit-btn" class="btn-primary" style="width: 100%;" onclick="submitData()">OK ตกลงตามนี้ ♥</button>
+        </div>
+
+        <div id="step-4" class="step">
+            <img src="https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif">
+            <h1>เย้! ไว้เจอกันนะ 🎉</h1>
+            <h3 id="summary-text" style="color: #e91e63; font-weight: normal; font-size: 18px; margin: 15px 0;"></h3>
+            <p class="capture-hint">📸 แคปหน้าจอนี้ส่งมาให้ด้วยนะ!</p>
+        </div>
+    </div>
+
+    <script>
+        let finalFood = "";
+
+        // ฟังก์ชันปุ่มหนี
+        function moveButton(e) {
+            if (e) e.preventDefault();
+            const noBtn = document.getElementById('no-btn');
+            const maxX = window.innerWidth - noBtn.offsetWidth - 20; 
+            const maxY = window.innerHeight - noBtn.offsetHeight - 20;
+            noBtn.style.position = 'fixed';
+            noBtn.style.left = Math.floor(Math.random() * maxX) + 'px';
+            noBtn.style.top = Math.floor(Math.random() * maxY) + 'px';
+        }
+
+        // ฟังก์ชันเปลี่ยนหน้า
+        function goToStep(current, next) {
+            document.getElementById(`step-${current}`).classList.remove('active');
+            document.getElementById(`step-${next}`).classList.add('active');
+        }
+
+        // ฟังก์ชันเลือกอาหาร
+        function selectFood(foodText, btnElement) {
+            finalFood = foodText;
+            document.getElementById('custom-food').value = "";
+            document.querySelectorAll('.food-btn').forEach(btn => btn.classList.remove('selected'));
+            btnElement.classList.add('selected');
+        }
+
+        // ฟังก์ชันเคลียร์ปุ่มเมื่อพิมพ์เอง
+        function clearSelection() {
+            finalFood = document.getElementById('custom-food').value;
+            document.querySelectorAll('.food-btn').forEach(btn => btn.classList.remove('selected'));
+        }
+
+        // เช็คว่าเลือกอาหารหรือยัง
+        function validateFoodAndNext() {
+            let customInput = document.getElementById('custom-food').value;
+            if (customInput.trim() !== "") finalFood = customInput;
+            if (finalFood === "") { alert("เลือกของกินก่อนสิ! 😠"); return; }
+            goToStep(2, 3);
+        }
+
+        // ฟังก์ชันยืนยันข้อมูลและแสดงผล (ไม่ต้องใช้ Server)
+        function submitData() {
+            let dateTimeInput = document.getElementById('date-time').value;
+            if (dateTimeInput === "") { alert("ใส่วันเวลามาด้วย จะได้ไปรับถูก! 🚗"); return; }
+
+            // แปลงฟอร์แมตวันที่
+            let dateObj = new Date(dateTimeInput);
+            let formattedDate = dateObj.toLocaleString('th-TH', { 
+                weekday: 'long', year: 'numeric', month: 'long', 
+                day: 'numeric', hour: '2-digit', minute: '2-digit' 
+            });
+            
+            // แสดงผลลัพธ์ในหน้าสุดท้ายทันที
+            document.getElementById('summary-text').innerText = `สรุปเราจะไปกิน "${finalFood}" \nในวันที่ ${formattedDate} น.`;
+            
+            // เปลี่ยนไปหน้าสุดท้ายและจุดพลุ
+            goToStep(3, 4);
+            fireConfetti();
+        }
+
+        // ฟังก์ชันจุดพลุหัวใจ
+        function fireConfetti() {
+            var end = Date.now() + (3 * 1000);
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0000', '#ff69b4', '#ff1493'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff0000', '#ff69b4', '#ff1493'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+    </script>
+</body>
+</html>
