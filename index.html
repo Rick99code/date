@@ -19,7 +19,9 @@
         .step.active { display: flex; }
         img { width: 150px; border-radius: 15px; margin-bottom: 20px; }
         h1 { color: #5c0f35; font-size: 22px; margin-bottom: 20px; line-height: 1.4; }
-        .buttons { display: flex; justify-content: center; gap: 15px; position: relative; width: 100%; }
+        
+        /* ควบคุมให้ปุ่มเรียงกันตรงกลางอย่างสมดุล */
+        .buttons { display: flex; justify-content: center; gap: 20px; width: 100%; }
         
         button { 
             font-size: 16px; padding: 12px 25px; border: none; border-radius: 25px; 
@@ -27,7 +29,14 @@
         }
         .btn-primary { background-color: #f06292; color: white; box-shadow: 0 4px 10px rgba(240, 98, 146, 0.4); }
         .btn-primary:active { transform: scale(0.95); }
-        #no-btn { background-color: #e1bee7; color: white; position: absolute; right: 0; }
+        
+        /* ปุ่ม no ปล่อยให้แสดงผลปกติ ไม่ต้อง absolute */
+        #no-btn { 
+            background-color: #e1bee7; 
+            color: white; 
+            width: 100px; 
+            box-sizing: border-box;
+        }
         
         .food-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 15px; }
         .food-btn { 
@@ -42,7 +51,6 @@
         }
         input:focus { outline: none; border-color: #e91e63; }
         
-        /* เพิ่มข้อความแจ้งเตือนให้แคปจอ */
         .capture-hint {
             font-size: 14px; color: #888; margin-top: 20px;
             animation: blink 2s infinite;
@@ -93,24 +101,26 @@
     <script>
         let finalFood = "";
 
-        // ฟังก์ชันปุ่มหนี
+        // ฟังก์ชันให้ปุ่มลอยหนี
         function moveButton(e) {
             if (e) e.preventDefault();
             const noBtn = document.getElementById('no-btn');
+            
+            // เปลี่ยน position เป็น fixed ทันทีที่มีคนพยายามกด เพื่อให้ปุ่มหลุดจากกรอบและบินได้อิสระ
+            noBtn.style.position = 'fixed';
+            
             const maxX = window.innerWidth - noBtn.offsetWidth - 20; 
             const maxY = window.innerHeight - noBtn.offsetHeight - 20;
-            noBtn.style.position = 'fixed';
+            
             noBtn.style.left = Math.floor(Math.random() * maxX) + 'px';
             noBtn.style.top = Math.floor(Math.random() * maxY) + 'px';
         }
 
-        // ฟังก์ชันเปลี่ยนหน้า
         function goToStep(current, next) {
             document.getElementById(`step-${current}`).classList.remove('active');
             document.getElementById(`step-${next}`).classList.add('active');
         }
 
-        // ฟังก์ชันเลือกอาหาร
         function selectFood(foodText, btnElement) {
             finalFood = foodText;
             document.getElementById('custom-food').value = "";
@@ -118,13 +128,11 @@
             btnElement.classList.add('selected');
         }
 
-        // ฟังก์ชันเคลียร์ปุ่มเมื่อพิมพ์เอง
         function clearSelection() {
             finalFood = document.getElementById('custom-food').value;
             document.querySelectorAll('.food-btn').forEach(btn => btn.classList.remove('selected'));
         }
 
-        // เช็คว่าเลือกอาหารหรือยัง
         function validateFoodAndNext() {
             let customInput = document.getElementById('custom-food').value;
             if (customInput.trim() !== "") finalFood = customInput;
@@ -132,27 +140,22 @@
             goToStep(2, 3);
         }
 
-        // ฟังก์ชันยืนยันข้อมูลและแสดงผล (ไม่ต้องใช้ Server)
         function submitData() {
             let dateTimeInput = document.getElementById('date-time').value;
             if (dateTimeInput === "") { alert("ใส่วันเวลามาด้วย จะได้ไปรับถูก! 🚗"); return; }
 
-            // แปลงฟอร์แมตวันที่
             let dateObj = new Date(dateTimeInput);
             let formattedDate = dateObj.toLocaleString('th-TH', { 
                 weekday: 'long', year: 'numeric', month: 'long', 
                 day: 'numeric', hour: '2-digit', minute: '2-digit' 
             });
             
-            // แสดงผลลัพธ์ในหน้าสุดท้ายทันที
             document.getElementById('summary-text').innerText = `สรุปเราจะไปกิน "${finalFood}" \nในวันที่ ${formattedDate} น.`;
             
-            // เปลี่ยนไปหน้าสุดท้ายและจุดพลุ
             goToStep(3, 4);
             fireConfetti();
         }
 
-        // ฟังก์ชันจุดพลุหัวใจ
         function fireConfetti() {
             var end = Date.now() + (3 * 1000);
             (function frame() {
