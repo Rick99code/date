@@ -20,7 +20,6 @@
         img { width: 150px; border-radius: 15px; margin-bottom: 20px; }
         h1 { color: #5c0f35; font-size: 22px; margin-bottom: 20px; line-height: 1.4; }
         
-        /* ควบคุมให้ปุ่มเรียงกันตรงกลางอย่างสมดุล */
         .buttons { display: flex; justify-content: center; gap: 20px; width: 100%; }
         
         button { 
@@ -30,19 +29,10 @@
         .btn-primary { background-color: #f06292; color: white; box-shadow: 0 4px 10px rgba(240, 98, 146, 0.4); }
         .btn-primary:active { transform: scale(0.95); }
         
-        /* ปุ่ม no ปล่อยให้แสดงผลปกติ ไม่ต้อง absolute */
-        #no-btn { 
-            background-color: #e1bee7; 
-            color: white; 
-            width: 100px; 
-            box-sizing: border-box;
-        }
+        #no-btn { background-color: #e1bee7; color: white; width: 100px; box-sizing: border-box; }
         
         .food-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 15px; }
-        .food-btn { 
-            background-color: #f8bbd0; color: #5c0f35; padding: 15px; border-radius: 15px; 
-            font-size: 16px; border: 2px solid transparent; 
-        }
+        .food-btn { background-color: #f8bbd0; color: #5c0f35; padding: 15px; border-radius: 15px; font-size: 16px; border: 2px solid transparent; }
         .food-btn.selected { border: 2px solid #e91e63; background-color: #f48fb1; }
         
         input[type="text"], input[type="datetime-local"] { 
@@ -51,19 +41,57 @@
         }
         input:focus { outline: none; border-color: #e91e63; }
         
-        .capture-hint {
-            font-size: 14px; color: #888; margin-top: 20px;
-            animation: blink 2s infinite;
-        }
+        .capture-hint { font-size: 14px; color: #888; margin-top: 20px; animation: blink 2s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* ส่วนของเมนูตั้งค่ามุมขวาบน */
+        .settings-btn {
+            position: fixed; top: 20px; right: 20px; font-size: 24px; background: none; 
+            border: none; cursor: pointer; z-index: 100; padding: 0; transition: transform 0.3s;
+            box-shadow: none;
+        }
+        .settings-btn:hover { transform: rotate(90deg); }
+        
+        /* กล่อง Modal ตั้งค่า */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 200; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 30px 20px; border-radius: 15px; width: 85%; max-width: 320px;
+            text-align: center; position: relative;
+        }
+        .close-modal {
+            position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #888;
+        }
+        .link-output {
+            display: none; width: 100%; padding: 10px; margin-top: 15px; border: 1px dashed #e91e63;
+            background: #fcfcfc; font-size: 12px; color: #555; word-break: break-all; text-align: left;
+        }
+        .btn-copy { display: none; background-color: #4CAF50; color: white; margin-top: 10px; width: 100%; }
     </style>
 </head>
 <body>
 
+    <button class="settings-btn" onclick="openSettings()">⚙️</button>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeSettings()">&times;</span>
+            <h2 style="font-size: 18px; color: #5c0f35; margin-top: 0;">🛠️ สร้างลิงก์ฉบับคุณเอง</h2>
+            <p style="font-size: 14px; color: #666;">เปลี่ยนหัวข้อสำหรับเป้าหมายของคุณ</p>
+            <input type="text" id="custom-title-input" placeholder="เช่น 🌸 ไปเดทกันไหม? 🌸">
+            <button class="btn-primary" style="width: 100%;" onclick="generateLink()">สร้างลิงก์สำหรับส่ง</button>
+            
+            <div id="link-output" class="link-output"></div>
+            <button id="btn-copy" class="btn-copy" onclick="copyLink()">📋 คัดลอกลิงก์</button>
+        </div>
+    </div>
+
     <div class="container">
         <div id="step-1" class="step active">
             <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDdtZ2JiZDR0a3BvNW1xcWxobmV6dXB6Z2J6Z2J6Z2J6Z2J6Z2J6ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/L1R1tvI9svkIWwpVYr/giphy.gif">
-            <h1>🌸 ไปเดทกันไหมที่สมุย? 🌸</h1>
+            <h1 id="main-title">🌸 ไปเดทกันไหม 🌸</h1>
             <div class="buttons">
                 <button class="btn-primary" onclick="goToStep(1, 2)">YES ♥</button>
                 <button id="no-btn" onmouseover="moveButton(event)" ontouchstart="moveButton(event)">no 🐾</button>
@@ -99,19 +127,56 @@
     </div>
 
     <script>
+        // ระบบอ่าน URL Parameter เมื่อเปิดหน้าเว็บ
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const customTitle = urlParams.get('title');
+            if (customTitle) {
+                // ถ้ามีข้อความแนบมากับลิงก์ ให้เปลี่ยนข้อความในหน้าแรกทันที
+                document.getElementById('main-title').innerText = customTitle;
+            }
+        };
+
+        // --- ระบบจัดการเมนูตั้งค่า ---
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        function generateLink() {
+            const inputVal = document.getElementById('custom-title-input').value;
+            if (inputVal.trim() === "") { alert("พิมพ์ข้อความก่อนสร้างลิงก์ครับ"); return; }
+            
+            // ดึง URL ปัจจุบัน (ตัด parameter เก่าทิ้งถ้ามี) แล้วต่อท้ายด้วย parameter ใหม่
+            const baseUrl = window.location.origin + window.location.pathname;
+            const newUrl = baseUrl + '?title=' + encodeURIComponent(inputVal);
+            
+            document.getElementById('link-output').innerText = newUrl;
+            document.getElementById('link-output').style.display = 'block';
+            document.getElementById('btn-copy').style.display = 'inline-block';
+        }
+
+        function copyLink() {
+            const linkText = document.getElementById('link-output').innerText;
+            navigator.clipboard.writeText(linkText).then(() => {
+                alert("คัดลอกลิงก์สำเร็จ! ส่งลิงก์นี้ให้เป้าหมายได้เลย 🚀");
+            }).catch(err => {
+                alert("ไม่สามารถคัดลอกได้ กรุณาคลุมดำและก๊อปปี้เองครับ");
+            });
+        }
+
+        // --- ระบบเดิมของหน้าเว็บ ---
         let finalFood = "";
 
-        // ฟังก์ชันให้ปุ่มลอยหนี
         function moveButton(e) {
             if (e) e.preventDefault();
             const noBtn = document.getElementById('no-btn');
-            
-            // เปลี่ยน position เป็น fixed ทันทีที่มีคนพยายามกด เพื่อให้ปุ่มหลุดจากกรอบและบินได้อิสระ
             noBtn.style.position = 'fixed';
-            
             const maxX = window.innerWidth - noBtn.offsetWidth - 20; 
             const maxY = window.innerHeight - noBtn.offsetHeight - 20;
-            
             noBtn.style.left = Math.floor(Math.random() * maxX) + 'px';
             noBtn.style.top = Math.floor(Math.random() * maxY) + 'px';
         }
@@ -143,15 +208,12 @@
         function submitData() {
             let dateTimeInput = document.getElementById('date-time').value;
             if (dateTimeInput === "") { alert("ใส่วันเวลามาด้วย จะได้ไปรับถูก! 🚗"); return; }
-
             let dateObj = new Date(dateTimeInput);
             let formattedDate = dateObj.toLocaleString('th-TH', { 
                 weekday: 'long', year: 'numeric', month: 'long', 
                 day: 'numeric', hour: '2-digit', minute: '2-digit' 
             });
-            
             document.getElementById('summary-text').innerText = `สรุปเราจะไปกิน "${finalFood}" \nในวันที่ ${formattedDate} น.`;
-            
             goToStep(3, 4);
             fireConfetti();
         }
